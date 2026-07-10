@@ -1,6 +1,6 @@
 package model;
 
-import expection.ValidationException;
+import exception.ValidationException;
 
 public final class Airport {
 

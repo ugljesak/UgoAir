@@ -1,15 +1,15 @@
 package model;
 
-import expection.ValidationException;
+import exception.ValidationException;
 
 import java.util.*;
 
 public class Model {
 
-    private final List<Airport> airports = new ArrayList<Airport>();
-    private final Map<String, Airport> map = new LinkedHashMap<String, Airport>();
+    private final List<Airport> airports = new ArrayList<>();
+    private final Map<String, Airport> map = new LinkedHashMap<>();
 
-    private final List<Flight> flights = new ArrayList<Flight>();
+    private final List<Flight> flights = new ArrayList<>();
 
     //private final Listeners<ModelListener> listeners = new Listeners<ModelListener>();
 

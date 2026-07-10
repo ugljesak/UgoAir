@@ -1,6 +1,6 @@
 package util;
 
-import expection.ValidationException;
+import exception.ValidationException;
 
 public final class SimulationTime implements Comparable<SimulationTime> {
 

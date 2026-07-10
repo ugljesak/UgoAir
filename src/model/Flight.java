@@ -1,6 +1,6 @@
 package model;
 
-import expection.ValidationException;
+import exception.ValidationException;
 import util.SimulationTime;
 
 public final class Flight {
