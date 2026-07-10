@@ -4,6 +4,9 @@ import model.Airport;
 import model.Model;
 import model.ModelListener;
 import model.SelectionListener;
+import simulation.Engine;
+import simulation.Plane;
+import simulation.Snapshot;
 import util.InactivityMonitor;
 
 import javax.swing.*;
@@ -32,16 +35,18 @@ public class MapPanel extends JPanel implements ModelListener {
     private final Model model;
     private final InactivityMonitor inactivityMonitor;
     private final AirportFilterModel visibility;
+    private final Engine engine;
 
     private String selectedCode;
     private int tick;
     private final Timer refreshTimer;
     private SelectionListener selectionListener;
 
-    public MapPanel(Model model, AirportFilterModel visibility, InactivityMonitor inactivityMonitor) {
+    public MapPanel(Model model, AirportFilterModel visibility, InactivityMonitor inactivityMonitor, Engine engine) {
         this.model = model;
         this.visibility = visibility;
         this.inactivityMonitor = inactivityMonitor;
+        this.engine = engine;
 
         setBackground(Color.WHITE);
         model.addListener(this);
@@ -207,7 +212,15 @@ public class MapPanel extends JPanel implements ModelListener {
     }
 
     private void paintPlanes(Graphics2D g2, int width, int height) {
-        int r = PLANE_DIAMETER / 2;
+        Snapshot snap = engine.getSnapshot();
+        for (Plane p : snap.getPlanes()) {
+            int x = toPaintX((int)p.getX(), width);
+            int y = toPaintY((int)p.getY(), height);
+            g2.setColor(PLANE_FILL);
+            g2.fillOval(x - PLANE_DIAMETER/2, y - PLANE_DIAMETER/2, PLANE_DIAMETER, PLANE_DIAMETER);
+            g2.setColor(PLANE_BORDER);
+            g2.drawOval(x - PLANE_DIAMETER/2, y - PLANE_DIAMETER/2, PLANE_DIAMETER, PLANE_DIAMETER);
+        }
 
     }
 

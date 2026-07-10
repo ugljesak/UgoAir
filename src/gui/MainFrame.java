@@ -2,15 +2,18 @@ package gui;
 
 import data.DataLoader;
 import data.DataLoaderCSV;
+import data.DataLoaderJSON;
 import data.Dataset;
 import exception.AppException;
 import gui.dataset.*;
 import gui.map.AirportFilterModel;
 import gui.map.AirportFilterPanel;
 import gui.map.MapPanel;
+import gui.map.SimulationPanel;
 import model.Airport;
 import model.Flight;
 import model.Model;
+import simulation.Engine;
 import util.InactivityListener;
 import util.InactivityMonitor;
 
@@ -26,21 +29,8 @@ public class MainFrame extends JFrame {
 
     private final Model model = new Model();
 
-    private final InactivityMonitor inactivityMonitor = new InactivityMonitor(new InactivityListener() {
-        @Override
-        public void inactivityWarningTick(int secondsLeft) {
-            System.out.println("[InactivityMonitor] Warning: " + secondsLeft + "s left.");
-        }
-        @Override
-        public void inactivityWarningCancelled() {
-            System.out.println("[InactivityMonitor] Warning cancelled.");
-        }
-        @Override
-        public void inactivityTimeout() {
-            System.out.println("[InactivityMonitor] TIMEOUT: terminating program.");
-            System.exit(0);
-        }
-    });
+    private final InactivityDialog inactivityDialog = new InactivityDialog(this);
+    private final InactivityMonitor inactivityMonitor = new InactivityMonitor(inactivityDialog);
 
     private final AirportFormPanel airportForm = new AirportFormPanel();
     private final FlightFormPanel flightForm = new FlightFormPanel(model);
@@ -53,12 +43,18 @@ public class MainFrame extends JFrame {
     private final JLabel statusLabel = new JLabel(" ");
 
     private final AirportFilterModel visibility = new AirportFilterModel(model);
-    private final MapPanel mapPanel = new MapPanel(model, visibility, inactivityMonitor);
     private final AirportFilterPanel filterPanel = new AirportFilterPanel(model, visibility);
+
+    private final Engine engine = new Engine();
+    private final SimulationPanel simulationPanel = new SimulationPanel(engine, model);
+    private final MapPanel mapPanel = new MapPanel(model, visibility, inactivityMonitor, engine);
 
     public MainFrame() {
         super("UgoAir - Simulator of flight traffic.");
+        inactivityDialog.setMonitor(inactivityMonitor);
         inactivityMonitor.start();
+        engine.start();
+        addGlobalListener();
 
         airportTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         flightTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -86,6 +82,7 @@ public class MainFrame extends JFrame {
         mapTab.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         mapTab.add(mapPanel, BorderLayout.CENTER);
         mapTab.add(filterPanel, BorderLayout.EAST);
+        mapTab.add(simulationPanel, BorderLayout.SOUTH);
 
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Data", dataPanel);
@@ -201,15 +198,21 @@ public class MainFrame extends JFrame {
         }
     }
 
-    // ------------------------------------------------------------
-    //  Fajl - ucitaj/sacuvaj
-    // ------------------------------------------------------------
     private JFileChooser createFileChooser() {
         File dataDir = new File("data");
         JFileChooser fc = new JFileChooser(dataDir.isDirectory() ? dataDir : new File("."));
         fc.setAcceptAllFileFilterUsed(false);
-        fc.addChoosableFileFilter(new FileNameExtensionFilter("CSV file (*.csv, *.CSV)", "csv", "CSV"));
+        fc.addChoosableFileFilter(new FileNameExtensionFilter("CSV file (*.csv)", "csv", "CSV"));
+        fc.addChoosableFileFilter(new FileNameExtensionFilter("JSON file (*.json)", "json", "JSON"));
         return fc;
+    }
+
+    private DataLoader loaderFor(File file) {
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".json")) {
+            return new DataLoaderJSON();
+        }
+        return new DataLoaderCSV();
     }
 
     private void onLoad() {
@@ -220,7 +223,7 @@ public class MainFrame extends JFrame {
         }
         File file = fc.getSelectedFile();
         try {
-            DataLoader loader = new DataLoaderCSV();
+            DataLoader loader = loaderFor(file);
             Dataset data = loader.load(file);
             model.replaceAll(data.getAirports(), data.getFlights());
             setStatus("Loaded " + data.getAirports().size() + " airports and "
@@ -238,14 +241,21 @@ public class MainFrame extends JFrame {
             return;
         }
         File file = fc.getSelectedFile();
-        if (!file.getName().toLowerCase().endsWith(".csv")) {
-            file = new File(file.getParentFile(), file.getName() + ".csv");
+        String lower = file.getName().toLowerCase();
+        if (!lower.endsWith(".csv") && !lower.endsWith(".json")) {
+            String ext = ".csv";
+            javax.swing.filechooser.FileFilter ff = fc.getFileFilter();
+            if (ff instanceof FileNameExtensionFilter
+                    && ((FileNameExtensionFilter) ff).getExtensions()[0].equalsIgnoreCase("json")) {
+                ext = ".json";
+            }
+            file = new File(file.getParentFile(), file.getName() + ext);
         }
         if (file.exists() && !Dialog.confirm(this, "File '" + file.getName() + "' already exists. Do you want to overwrite it?")) {
             return;
         }
         try {
-            DataLoader loader = new DataLoaderCSV();
+            DataLoader loader = loaderFor(file);
             loader.save(file, new Dataset(model.getAirports(), model.getFlights()));
             setStatus("Saved in '" + file.getName() + "'.");
         } catch (AppException ex) {
@@ -253,7 +263,30 @@ public class MainFrame extends JFrame {
         }
     }
 
+    private void addGlobalListener() {
+
+        Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
+            @Override
+            public void eventDispatched(AWTEvent event) {
+                int id = event.getID();
+                boolean mouseAction = id == MouseEvent.MOUSE_CLICKED || id == MouseEvent.MOUSE_MOVED
+                        || id == MouseEvent.MOUSE_DRAGGED || id == MouseEvent.MOUSE_WHEEL;
+                boolean keyAction = id >= KeyEvent.KEY_FIRST && id <= KeyEvent.KEY_LAST;
+                if (mouseAction || keyAction) {
+                    inactivityMonitor.registerActivity();
+                }
+            }
+        }, AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK | AWTEvent.MOUSE_WHEEL_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
+    }
+
     private void setStatus(String message) {
         statusLabel.setText(message);
+    }
+
+    private void shutdownAndExit() {
+        engine.shutdown();
+        inactivityMonitor.shutdown();
+        dispose();
+        System.exit(0);
     }
 }

@@ -59,6 +59,10 @@ public class Model {
         return List.copyOf(airports);
     }
 
+    public synchronized Map<String, Airport> getMap() {
+        return Map.copyOf(map);
+    }
+
     // ========================================================================================
     // --- Flights ---
     // ========================================================================================
