@@ -12,6 +12,7 @@ public final class Dataset {
 
     public Dataset(List<Airport> airports, List<Flight> flights) {
         this.airports = List.copyOf(airports);
+        //this.flights = Collections.unmodifiableList(new ArrayList<Flight>(flights));
         this.flights = List.copyOf(flights);
     }
 

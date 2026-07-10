@@ -28,7 +28,7 @@ public final class Flight {
         }
         this.departureTime = departureTime;
         if (duration <= 0) {
-            throw new ValidationException("Duration of the flight needs to be a positive integer. (got: " + duration + ").");
+            throw new ValidationException("Duration of the flight needs to be a positive integer, but got " + duration + ".");
         }
         this.duration = duration;
     }
