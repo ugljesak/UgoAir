@@ -1,6 +1,7 @@
 package model;
 
 import exception.ValidationException;
+import util.Listeners;
 
 import java.util.*;
 
@@ -11,10 +12,14 @@ public class Model {
 
     private final List<Flight> flights = new ArrayList<>();
 
-    //private final Listeners<ModelListener> listeners = new Listeners<ModelListener>();
+    private final Listeners<ModelListener> listeners = new Listeners<ModelListener>();
 
+
+    public void addListener(ModelListener l) { listeners.add(l); }
+    public void removeListener(ModelListener l) { listeners.remove(l); }
     private void fireChanged() {
         //listeners.fire(l -> l.modelChanged());
+        listeners.fire(ModelListener::modelChanged);
     }
 
     // ========================================================================================

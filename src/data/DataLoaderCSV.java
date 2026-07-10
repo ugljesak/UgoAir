@@ -131,7 +131,7 @@ public class DataLoaderCSV extends DataLoader {
 
         Airport airport;
         try {
-            airport = new Airport(code, name, x, y);
+            airport = new Airport(name, code, x, y);
         } catch (ValidationException e) {
             throw new DataFormatException("Line " + lineNo + ": " + e.getMessage(), e);
         }
