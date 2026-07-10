@@ -4,22 +4,43 @@ import data.DataLoader;
 import data.DataLoaderCSV;
 import data.Dataset;
 import exception.AppException;
-import gui.dataset.AirportFormPanel;
-import gui.dataset.AirportTableModel;
-import gui.dataset.FlightFormPanel;
-import gui.dataset.FlightTableModel;
+import gui.dataset.*;
+import gui.map.AirportFilterModel;
+import gui.map.AirportFilterPanel;
+import gui.map.MapPanel;
 import model.Airport;
 import model.Flight;
 import model.Model;
+import util.InactivityListener;
+import util.InactivityMonitor;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.event.AWTEventListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.io.File;
 
 public class MainFrame extends JFrame {
 
     private final Model model = new Model();
+
+    private final InactivityMonitor inactivityMonitor = new InactivityMonitor(new InactivityListener() {
+        @Override
+        public void inactivityWarningTick(int secondsLeft) {
+            System.out.println("[InactivityMonitor] Warning: " + secondsLeft + "s left.");
+        }
+        @Override
+        public void inactivityWarningCancelled() {
+            System.out.println("[InactivityMonitor] Warning cancelled.");
+        }
+        @Override
+        public void inactivityTimeout() {
+            System.out.println("[InactivityMonitor] TIMEOUT: terminating program.");
+            System.exit(0);
+        }
+    });
 
     private final AirportFormPanel airportForm = new AirportFormPanel();
     private final FlightFormPanel flightForm = new FlightFormPanel(model);
@@ -31,8 +52,13 @@ public class MainFrame extends JFrame {
 
     private final JLabel statusLabel = new JLabel(" ");
 
+    private final AirportFilterModel visibility = new AirportFilterModel(model);
+    private final MapPanel mapPanel = new MapPanel(model, visibility, inactivityMonitor);
+    private final AirportFilterPanel filterPanel = new AirportFilterPanel(model, visibility);
+
     public MainFrame() {
         super("UgoAir - Simulator of flight traffic.");
+        inactivityMonitor.start();
 
         airportTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         flightTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -55,7 +81,21 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1000, 620);
         setLocationRelativeTo(null);
+
+        JPanel mapTab = new JPanel(new BorderLayout(8, 8));
+        mapTab.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        mapTab.add(mapPanel, BorderLayout.CENTER);
+        mapTab.add(filterPanel, BorderLayout.EAST);
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Data", dataPanel);
+        tabs.addTab("Map", mapTab);
+
+        getContentPane().setLayout(new BorderLayout());
+        getContentPane().add(tabs, BorderLayout.CENTER);
+        getContentPane().add(buildStatusBar(), BorderLayout.SOUTH);
     }
+
 
     private JPanel buildHalf(JPanel form, JTable table, String deleteLabel, java.awt.event.ActionListener onDelete) {
         JPanel half = new JPanel(new BorderLayout(0, 8));
